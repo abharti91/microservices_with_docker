@@ -1,7 +1,18 @@
-Installed docker client on windows, Window act as Docker machine and client as Docker.
+-----------------------
+INSTALLATION ON WINDOWS
+-----------------------
+https://docs.docker.com/toolbox/toolbox_install_windows/
 
 
-Files in docker host (laptop)
+------------------
+DOCKER IMAGES HUB
+------------------
+https://hub.docker.com/ 
+
+
+--------------------
+FILES IN DOCKER HOST
+--------------------
 1. boo2Docker.iso  = binary kernel
 2. vmdisk
 3. pem = permission 
@@ -12,3 +23,74 @@ Files in docker host (laptop)
 8. dockerfile = image management
 9. yaml (service) = container management
 10. .prev = previous snapshot
+
+
+
+---------------
+CLIENT TERMINAL
+--------------
+default is name of default docker machine
+$ docker-machine ssh default
+   ( '>')
+  /) TC (\   Core is distributed with ABSOLUTELY NO WARRANTY.
+ (/-_--_-\)           www.tinycorelinux.net
+
+
+
+/var/lib/docker = all docker machine files
+docker-machine = docker machine related commands
+docker 		   = docker related commands
+
+
+-------------------------
+DOCKER FILESYSTEM LAYERS
+-------------------------
+layer 0 - kernel
+layer 1 - bootfs (boot file system)
+layer 2 - rootfs (one or more OS)   (layer1 + layer2 = base image)
+	[COPY ON WRITE PROPERTY] lets say container launched, below layers keep on in READ ONLY, above layers are READ WRITE as we keep on adding images/layers
+layer 3 - add emacs (ex)
+layer 4 - add python (ex)
+---
+---
+---
+so on
+
+when a container is launched form an image, docker mounts read-write filesystem on top of layers below.
+
+
+------------------
+ESSENTIAL COMMANDS
+------------------
+launch new container named myubuntucontainer from ubuntu image(picked frm docker hub) and open bash shell
+	# docker run -it --name myubuntucontainer ubuntu bash
+	root@123456:/# 
+
+list docker images
+	# docker images
+
+inspect images
+	# docker inspect myubuntucontainer
+
+push and pull images from docker hub
+	# docker login -u <username>
+	# docker commit myubuntucontainer newubuntuimg  		(associate existing container to image)
+	# docker tag newubuntuimg <username>/newubuntuimg:v1 	(create symlink to user repository)
+	# docker push <username>/newubuntuimg:v1                (push this image to local repository)
+	# docker rmi -f <first 3 chars of docker images>          (remove image from local docker machine)
+	# docker pull <username>/ubuntuimg 						(pull this image from hub.oracle.com)
+
+delete all containers
+	# docker rm -f $(docker ps -a)
+
+search for containers
+	# docker search ubuntu
+
+interpolation : get specific json attributes for all containers
+	# docker inspect -f "{{.Name}} {{.State.Status}} {{.NetworkSettings.IPAddress}}" $(docker ps -a -q)
+
+
+
+--------------------------------
+DOCKERFILE - BUILDING OWN IMAGES
+--------------------------------
