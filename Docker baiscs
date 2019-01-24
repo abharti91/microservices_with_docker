@@ -26,9 +26,9 @@ FILES IN DOCKER HOST
 
 
 
----------------
-CLIENT TERMINAL
---------------
+----------------------
+CLIENT/SERVER TERMINAL
+----------------------
 default is name of default docker machine
 $ docker-machine ssh default
    ( '>')
@@ -38,8 +38,8 @@ $ docker-machine ssh default
 
 
 /var/lib/docker = all docker machine files
-docker-machine = docker machine related commands
-docker 		   = docker related commands
+CLIENT (ex. windows) 		   docker-machine  = docker machine related commands
+SERVER (ex. default container) docker 		   = docker related commands
 
 
 -------------------------
@@ -64,7 +64,7 @@ ESSENTIAL COMMANDS
 ------------------
 launch new container named myubuntucontainer from ubuntu image(picked frm docker hub) and open bash shell
 	# docker run -it --name myubuntucontainer ubuntu bash
-	root@123456:/# 
+	root@123456abc:/# 
 
 list docker images
 	# docker images
@@ -77,7 +77,7 @@ push and pull images from docker hub
 	# docker commit myubuntucontainer newubuntuimg  		(associate existing container to image)
 	# docker tag newubuntuimg <username>/newubuntuimg:v1 	(create symlink to user repository)
 	# docker push <username>/newubuntuimg:v1                (push this image to local repository)
-	# docker rmi -f <first 3 chars of docker images>          (remove image from local docker machine)
+	# docker rmi -f <first 3 chars of docker images>        (remove image from local docker machine)
 	# docker pull <username>/ubuntuimg 						(pull this image from hub.oracle.com)
 
 delete all containers
@@ -89,8 +89,86 @@ search for containers
 interpolation : get specific json attributes for all containers
 	# docker inspect -f "{{.Name}} {{.State.Status}} {{.NetworkSettings.IPAddress}}" $(docker ps -a -q)
 
+get last created container
+	# docker ps -l -q
+
+docker commit only commits the difference between images the container was created from and current state of the container
+	# docker run -i -t ubuntu /bin/bash
+	root@123abc456:/# apt-get -ypq update
+	root@123abc456:/# apt-get -y install apache2
+
+	# docker commit 123abc456 aabharti91/apache2
+
+	we have create a docker image with ubuntu image and apache webserver running on top of it
+	we can use this apache server later directly 
+
+	# docker commit -m "New custom image" -a "Aakash Bharti" 123abc456 aabharti91/apache2:webserver
+	# docker run -i -t aabharti91/apache2:webserver /bin/bash
+
+	other way use dockerfile
 
 
 --------------------------------
 DOCKERFILE - BUILDING OWN IMAGES
 --------------------------------
+text file
+	aabharti@AABHARTI-LAP MINGW64 /d/docker
+	$ cat sample.sh
+	#!/bin/bash
+	echo "Sample shell script from Image"
+
+dockerfile
+	aabharti@AABHARTI-LAP MINGW64 /d/docker
+	$ cat Dockerfile.txt
+	FROM ubuntu
+	# Comments. This is for Directive.. PRAGMA
+	LABEL MAINTAINER AAKASH.GOSWAMI@YAHOO.COM
+	RUN mkdir /code
+	COPY sample.sh /code/sample.sh
+	# COPY . /code/
+
+creating container using dockerfile
+	aabharti@AABHARTI-LAP MINGW64 /d/docker
+	$ docker build -t newcodeubuntu -f Dockerfile.txt .
+	Sending build context to Docker daemon  3.072kB
+	Step 1/4 : FROM ubuntu
+	 ---> 5546a952021f
+	Step 2/4 : LABEL MAINTAINER AAKASH.GOSWAMI@YAHOO.COM
+	 ---> Running in c8326f03b145
+	Removing intermediate container c8326f03b145
+	 ---> 91e59afc71c9
+	Step 3/4 : RUN mkdir /code
+	 ---> Running in 26e6c58e115b                     <<=============== running this command in container
+	Removing intermediate container 26e6c58e115b                  
+	 ---> 1db6a6e2acf4                                <<=============== this is new image build commulative
+	Step 4/4 : COPY sample.sh /code/sample.sh
+	 ---> 536de28ac637
+	Successfully built 536de28ac637
+	Successfully tagged newcodeubuntu:latest
+	SECURITY WARNING: You are building a Docker image from Windows against a non-Windows Docker host. Al
+	l files and directories added to build context will have '-rwxr-xr-x' permissions. It is recommended
+	 to double check and reset permissions for sensitive files and directories.
+
+steps executed while creating container newcodeubuntu
+	aabharti@AABHARTI-LAP MINGW64 /d/docker
+	$ docker history newcodeubuntu
+	IMAGE               CREATED             CREATED BY                                      SIZE COMMENT
+	536de28ac637        4 minutes ago       /bin/sh -c #(nop) COPY file:2c4520a8553e1073   49B
+	1db6a6e2acf4        4 minutes ago       /bin/sh -c mkdir /code                          0B
+	91e59afc71c9        4 minutes ago       /bin/sh -c #(nop)  LABEL MAINTAINER=AAKASH.G   0B
+	5546a952021f        2 hours ago         bash                                            5B
+	93fd78260bd1        3 weeks ago         /bin/sh -c #(nop)  CMD ["/bin/bash"]            0B
+	<missing>           3 weeks ago         /bin/sh -c mkdir -p /run/systemd && echo 'do   7B
+	<missing>           3 weeks ago         /bin/sh -c rm -rf /var/lib/apt/lists/*          0B
+	<missing>           3 weeks ago         /bin/sh -c set -xe   && echo '#!/bin/sh' > /   745B
+	<missing>           3 weeks ago         /bin/sh -c #(nop) ADD file:39e5bc157a8be63bb   86.2MB
+
+copying files from client(windows) to server(ubuntucontainer)
+	aabharti@AABHARTI-LAP MINGW64 /d/docker
+	$ docker cp sample.sh ubuntucontainer:/usr
+
+	root@default:~# docker exec -it ubuntucontainer bash
+	root@c97ad1f71dac:/# ls /usr/
+	bin  games  include  lib  local  sample.sh  sbin  share  src
+	root@c97ad1f71dac:/# exit
+	exit
