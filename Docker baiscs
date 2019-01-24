@@ -63,54 +63,63 @@ when a container is launched form an image, docker mounts read-write filesystem 
 ESSENTIAL COMMANDS
 ------------------
 launch new container named myubuntucontainer from ubuntu image(picked frm docker hub) and open bash shell
-	# docker run -it --name myubuntucontainer ubuntu bash
+	$ docker run -it --name myubuntucontainer ubuntu bash
 	root@123456abc:/# 
 
 list docker images
-	# docker images
+	$ docker images
 
 inspect images
-	# docker inspect myubuntucontainer
+	$ docker inspect myubuntucontainer
 
 push and pull images from docker hub
-	# docker login -u <username>
-	# docker commit myubuntucontainer newubuntuimg  		(associate existing container to image)
-	# docker tag newubuntuimg <username>/newubuntuimg:v1 	(create symlink to user repository)
-	# docker push <username>/newubuntuimg:v1                (push this image to local repository)
-	# docker rmi -f <first 3 chars of docker images>        (remove image from local docker machine)
-	# docker pull <username>/ubuntuimg 						(pull this image from hub.oracle.com)
+	$ docker login -u <username>
+	$ docker commit myubuntucontainer newubuntuimg  		(associate existing container to image)
+	$ docker tag newubuntuimg <username>/newubuntuimg:v1 	(create symlink to user repository)
+	$ docker push <username>/newubuntuimg:v1                (push this image to local repository)
+	$ docker rmi -f <first 3 chars of docker images>        (remove image from local docker machine)
+	$ docker pull <username>/ubuntuimg 						(pull this image from hub.oracle.com)
 
 delete all containers
-	# docker rm -f $(docker ps -a)
+	$ docker rm -f $(docker ps -a)
 
 search for containers
-	# docker search ubuntu
+	$ docker search ubuntu
 
 interpolation : get specific json attributes for all containers
-	# docker inspect -f "{{.Name}} {{.State.Status}} {{.NetworkSettings.IPAddress}}" $(docker ps -a -q)
+	$ docker inspect -f "{{.Name}} {{.State.Status}} {{.NetworkSettings.IPAddress}}" $(docker ps -a -q)
 
 get last created container
-	# docker ps -l -q
+	$ docker ps -l -q
 
 docker commit only commits the difference between images the container was created from and current state of the container
-	# docker run -i -t ubuntu /bin/bash
+	$ docker run -i -t ubuntu /bin/bash
 	root@123abc456:/# apt-get -ypq update
 	root@123abc456:/# apt-get -y install apache2
 
-	# docker commit 123abc456 aabharti91/apache2
+	$ docker commit 123abc456 aabharti91/apache2
 
 	we have create a docker image with ubuntu image and apache webserver running on top of it
 	we can use this apache server later directly 
 
-	# docker commit -m "New custom image" -a "Aakash Bharti" 123abc456 aabharti91/apache2:webserver
-	# docker run -i -t aabharti91/apache2:webserver /bin/bash
+	$ docker commit -m "New custom image" -a "Aakash Bharti" 123abc456 aabharti91/apache2:webserver
+	$ docker run -i -t aabharti91/apache2:webserver /bin/bash
 
 	other way use dockerfile
+
+passing env variables while launching container, preference given to -e over --env-file
+	$ docker run -it --rm --env-file=config.env -e container_scope="40.0" ubuntu bash
+	--rm exists from container shell
+
+
+
 
 
 --------------------------------
 DOCKERFILE - BUILDING OWN IMAGES
 --------------------------------
+
+SAMPLE DOCKERFILE BASED CONTAINER LAUNCH
 text file
 	aabharti@AABHARTI-LAP MINGW64 /d/docker
 	$ cat sample.sh
@@ -129,7 +138,7 @@ dockerfile
 
 creating container using dockerfile
 	aabharti@AABHARTI-LAP MINGW64 /d/docker
-	$ docker build -t newcodeubuntu -f Dockerfile.txt .
+	$ docker build -t newcodeubuntu -f Dockerfile.txt -t='aabharti91/static_ubuntu' .
 	Sending build context to Docker daemon  3.072kB
 	Step 1/4 : FROM ubuntu
 	 ---> 5546a952021f
@@ -172,3 +181,74 @@ copying files from client(windows) to server(ubuntucontainer)
 	bin  games  include  lib  local  sample.sh  sbin  share  src
 	root@c97ad1f71dac:/# exit
 	exit
+
+
+What happened when container build with dockerfile?
+	- docker runs a container form image
+	- an instruction executes and make changes to container
+	- docker runs equivalent of docker commit to commit a new layer
+	- docker then runs a new container from this new image
+	- the next instruction is executed, for all steps
+	- so if any step failed we still have an working image  
+	- RUN runs command in /bin/sh -c if container do not have any shell use EXEC
+	- ex. RUN ["apt-get", " install", " -y", " nginx"]
+	- EXPOSE 80 will export 80 in container when docker run happens
+	- . is currenr directory, any git repository can also be supplied here
+
+
+========================================================
+RUN CONTAINERS FOR SPECIFIC UBUNTU USING IMAGE ARGUMENTS
+========================================================
+	$ cat Dockerfile.txt
+		FROM ubuntu:$CODE_VERSION
+		ARG image_scope="v1"
+		# Comments. This is for Directive.. PRAGMA
+		LABEL MAINTAINER AAKASH.GOSWAMI@YAHOO.COM
+		RUN mkdir /code
+		COPY sample.sh /code/sample.sh
+		# COPY . /code/
+		RUN chmod +777 /code/sample.sh
+		RUN echo $image_scope
+		ENV container_scope="v1.0"
+		WORKDIR /code
+		CMD ["./sample.sh"]
+
+	$ docker build -t ubuntu1604 -f Dockerfile.txt --build-arg CODE_VERSION=16.04 .
+
+verify env variables using run , if bash is not given at end it will take last CMD shell from dockerfile
+	$ docker run -it ubuntu1604
+
+=========================
+PORT MANAGENEGT IN DOCKER 
+=========================
+	p = static ports, associates 80 port of container to 7000 port of docker machine
+	-d deattch (in background)
+
+	$ docker pull nginx
+	$ docker run -d --name webserver -p 7000:80 nginx 
+	$ docker port webserver
+	$ docker inspect bridge
+	$ curl $(docker-machine ip):7000
+	$ iptables -t nat -L (verify the IP mapping)
+
+	P = dynamic ports , no binding required
+	$ docker run -d --name webserver1 -P nginx
+	$ docker port webserver1
+	$ curl $(docker-machine ip):<dynamic port created above>
+
+
+Exposing ports at build time
+	$ cat Dockerfile3.txt
+	FROM nginx
+	EXPOSE 80 100 120    ====> creates 1 layer
+	#EXPOSE 100             
+	#EXPOSE 120
+
+	$ docker build -t newnginimg -f Dockerfile3.txt .
+	$ nptables -t nat -L
+
+Other ways
+	$ docker run -d --name mywebnginxserver -p 7001:80 -p 7002:100 -p 7003:120 newnginimg
+	$ docker port mywebnginxserver
+	or
+	$ docker run -d --name mywebngnixserver1 -P newnginimg
