@@ -1,0 +1,14 @@
+Installed docker client on windows, Window act as Docker machine and client as Docker.
+
+
+Files in docker host (laptop)
+1. boo2Docker.iso  = binary kernel
+2. vmdisk
+3. pem = permission 
+4. rsa = certificates
+5. JSON
+6. logs
+7. cache = repository
+8. dockerfile = image management
+9. yaml (service) = container management
+10. .prev = previous snapshot
